@@ -1,6 +1,13 @@
 version: '3.7'
 services:
-  mysql:
+  tomcat:
+    build: .
+    image: tom:1.0
+    ports:
+      - "8082:8080"
+    volumes:
+      - /opt/sonar:/opt/tomcat
+  mysql1:
     image: mysql
     ports:
       - "3306:3306"
@@ -18,8 +25,7 @@ services:
     volumes:
       - /opt/sonar:/opt/jenkins
     depends_on:
-      - mysql
-      
+      - mysql1
+
 networks:
-  - own
-  
+  own:
