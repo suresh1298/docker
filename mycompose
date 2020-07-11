@@ -1,0 +1,50 @@
+version: '3.7'
+services:
+  postgressql:
+    image: postgress:latest
+    ports:
+      - "5432:5432"
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+      - POSTGRESQL_USER=suresh
+      - POSTGRESQL_DATABASE=sonar
+      - POSTGRESQL_PASSWORD=123
+    volumes:
+      - /opt/sonar/:/opt/prstgress
+  SonarQube:
+    image: sonarqube/latest
+    ports:
+      - "9000:9000"
+    volumes:
+      - /opt/sonar/:/opt/sonar
+    environment:
+      - SONARQUBE_DATABASE_USER=suresh
+      - SONARQUBE_DATABASE_NAME=sonar
+      - SONARQUBE_DATABASE_PASSWORD=123
+      - ALLOW_EMPTY_PASSWORD=yes
+    depends_on:
+      - postgressql
+  maven:
+    build: /opt/maven/
+    image: maven:suresh
+  nexus:
+    image: sonatype/nexus3
+    ports:
+      - "8081:8081"
+    volumes:
+      - /opt/sonar:/opt/nexus
+  tomcat:
+    image:  tomcat/9.0
+    ports:
+      - "8082:8080"
+    volumes:
+      - /opt/sonar:/opt/tomcat
+  jenkins:
+    image: jenkins
+    ports:
+      - "8080:8080"
+    volumes:
+      - /opt/sonar:/opt/jenkins
+      
+networks:
+  own:
