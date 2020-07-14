@@ -1,0 +1,31 @@
+version: '3.7'
+services:
+  tomcat:
+    build: .
+    image: tom:1.0
+    ports:
+      - "8082:8080"
+    volumes:
+      - /opt/sonar:/opt/tomcat
+  mysql1:
+    image: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=suresh
+      - MYSQL_ROOT_PASSWORD=123
+    volumes:
+    - /opt/sonar:/opt/mysql
+  jenkins:
+    image: jenkins
+    ports:
+      - "8083:8080"
+    environment:
+      - a=20
+    volumes:
+      - /opt/sonar:/opt/jenkins
+    depends_on:
+      - mysql1
+
+networks:
+  own:

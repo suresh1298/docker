@@ -1,31 +1,36 @@
-version: '3.7'
+version: '3.3'
 services:
+  postgres:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=sonar
+      - POSTGRES_PASSWORD=sonar
+    volumes:
+      - /opt/sonar/:/opt/prstgress
+  SonarQube:
+    image: sonarqube
+    ports:
+      - "9000:9000"
+    volumes:
+      - /opt/sonar/:/opt/sonar
+    environment:
+      - SONARQUBE_JDBC_USERNAME=sonar
+      - SONARQUBE_JDBC_PASSWORD=sonar
+      - SONARQUBE_JDBC_URL=jdbc:postgresql://postgres:5432/sonar
+    depends_on:
+      - postgres
   tomcat:
     build: .
-    image: tom:1.0
-    ports:
-      - "8082:8080"
+    image: tomcat:1.1
     volumes:
-      - /opt/sonar:/opt/tomcat
-  mysql1:
-    image: mysql
+      - /root/Sample_Project/target/:/usr/local/tomcat/webapps
     ports:
-      - "3306:3306"
-    environment:
-      - MYSQL_DATABASE=suresh
-      - MYSQL_ROOT_PASSWORD=123
-    volumes:
-    - /opt/sonar:/opt/mysql
+      - "8086:8080"
   jenkins:
     image: jenkins
     ports:
-      - "8083:8080"
-    environment:
-      - a=20
+      - "8080:8080"
     volumes:
       - /opt/sonar:/opt/jenkins
-    depends_on:
-      - mysql1
-
-networks:
-  own:
