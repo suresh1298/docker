@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: suresh
+spec:
+  replicas: 2
+  selector:
+    app: httpd
+  template:
+    metadata:
+      labels:
+        app: httpd
+    spec:
+      containers:
+      - image: httpd
+        name: httpd
+        ports: 
+          - containerPort: 80
+---
+apiVersion: v1
+kind: ReplicationController
+metadata: 
+  name: nginx
+spec:
+  replicas: 2
+  selector:
+    app: nginx
+  template: 
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        ports:
+          - containerPort: 80
+
+        
