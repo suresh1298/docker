@@ -1,20 +1,18 @@
-apiVersion: batch/v1beta1
-kind: CronJob
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: countdown
+  name: jobs
+  namespace: job
 spec:
-  schedule: "*/1 * * * *"
-  successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 0
-  jobTemplate:
+  template:
+    metadata:
+      name: countdown
     spec:
-      template:
-        spec:
-          containers:
-          - name: counter
-            image: centos:7
-            command:
-             - "bin/bash"
-             - "-c"
-             - "for i in 9 8 7 6 5 4 3 2 1 ; do echo $i ; done"
-          restartPolicy: Never
+      containers:
+        - name: centious
+          image: centos
+          command:
+            - "bin/bash"
+            - "-c"
+            - "for i in 9 8 7 6 5 4 3 2 1 ; do echo $i ; done"
+      restartPolicy: Never
