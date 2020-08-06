@@ -2,11 +2,11 @@ using command --from-literal=key=value
 
 image: nginx
 env:
-- name: configmap
-  valueFrom:
-  configMapKeyRef:
-    name: cmd
-    key: a
+  - name: configmap
+    valueFrom:
+      configMapKeyRef:
+        name: cmd
+        key: a
 ------
 using directory --from-literal=filepath
 
