@@ -23,6 +23,25 @@ volumes:
   - name: configmap
     configMap:
       name: directory
+      
+ --- 
+  config for file
+  
+  containers:
+ - name: httpd
+   image: nginx
+   imagePullPolicy: IfNotPresent
+   ports:
+     - containerPort: 80
+   volumeMounts:
+   - name: configmap
+     mountpath: /etc/nginx/nginx.conf
+     subPath: nginx.conf
+volumes:
+  - name: configmap
+    configMap:
+      name: cm-name
+     
 
 
      
