@@ -18,7 +18,7 @@ containers:
      - containerPort: 80
    volumeMounts:
    - name: configmap
-     mountpath: /opt/volume
+     mountPath: /opt/volume
 volumes:
   - name: configmap
     configMap:
@@ -35,7 +35,7 @@ volumes:
      - containerPort: 80
    volumeMounts:
    - name: configmap
-     mountpath: /etc/nginx/nginx.conf
+     mountPath: /etc/nginx/nginx.conf
      subPath: nginx.conf
 volumes:
   - name: configmap
