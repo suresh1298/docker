@@ -1,0 +1,82 @@
+FROM centos
+
+# The Author
+MAINTAINER Reddy Eswar
+
+# Copy requirememts.txt
+COPY requirements.txt /
+
+# Configure proxy for system level
+RUN echo 'export http_proxy=http://cias.geoaws.com:8080/' >> ~/.bash_profile \
+        && echo 'export https_proxy=http://cias.geoaws.com:8080/' >> ~/.bash_profile \
+        && echo 'export http_proxy=http://cias.geoaws.com:8080/' >> ~/.bashrc \
+        && echo 'export https_proxy=http://cias.geoaws.com:8080/' >> ~/.bashrc \
+        && export http_proxy=http://cias.geoaws.com:8080/ \
+        && export https_proxy=http://cias.geoaws.com:8080/
+
+# Installation of Dependencies with YUM & PIP
+RUN echo "proxy=http://cias.geoaws.com:8080/" >> /etc/yum.conf \
+        && yum update -y && yum install sudo -y && yum install wget -y && yum install -y httpd \
+        && yum install curl gcc-c++ make -y \
+        && yum install -y mod_wsgi && yum install -y mod_ldap && yum install -y MySQL-python \
+        && yum install -y git && yum install -y python-devel && yum install -y unixODBC-devel \
+        && yum install -y openldap-devel && yum install -y epel-release && yum install -y python-pip \
+        && yum groupinstall -y 'Development Tools' \
+        && pip --proxy=http://cias.geoaws.com:8080/ install --upgrade pip \
+        && pip --proxy=http://cias.geoaws.com:8080/ install -r /requirements.txt \
+        && curl -sL https://rpm.nodesource.com/setup_10.x | sudo -E bash - \
+        && sudo yum install nodejs -y \
+        && npm config set proxy http://cias.geoaws.com:8080/ -g \
+        && npm config set https-proxy http://cias.geoaws.com:8080/ -g
+
+# Copy Oracle repo
+COPY ol7.repo /etc/yum.repos.d/
+
+# Download GPG Key for ol7 repo
+RUN wget -e  http_proxy=http://cias.geoaws.com:8080/ http://public-yum.oracle.com/RPM-GPG-KEY-oracle-ol7 \
+        -O /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle \
+        && yum install yum -y install oracle-release-el7 oraclelinux-developer-release-el7 \
+        &&  yum -y install python-cx_Oracle \
+        && sudo sh -c "echo /usr/lib/oracle/18.3/client64/lib > /etc/ld.so.conf.d/oracle-instantclient.conf" \
+        && sudo ldconfig
+
+# Checkout the code from git private repo
+RUN cd /var/www/html/ \
+        && git init \
+        && git clone -b  master http://5cf7c65f06579bd4cdd14770ea160cd0fe44c0c1:x-oauth-basic@github.conti.de/uidn8830/StatusPortal.git \
+        && chown -R apache:apache /var/www/html/StatusPortal \
+        && mkdir /var/www/html/server_config \
+        && chown -R apache:apache /var/www/html/server_config \
+        && cd /var/www/html/StatusPortal \
+        && npm init --yes \
+        && npm install -g grunt-cli \
+        && npm install grunt-contrib-cssmin --save-dev \
+        && npm install grunt-contrib-uglify-es --save-dev
+
+# Copy Db Config File
+COPY ./status_portal_config.json /var/www/html/server_config/
+
+# Copy application server configuration files
+COPY ./disha.conf /etc/httpd/conf.d/disha.conf
+
+ARG CLEAR_CACHE=1
+
+# Minifying css and js files
+WORKDIR /var/www/html/StatusPortal
+RUN git pull \
+        && npm install grunt \
+        && grunt cssmin \
+        && grunt uglify
+
+# Push Changes to Master Branch
+RUN git config --global user.email "eswar.reddy-ext@continental-corporation.com" \
+        && git config --global user.name "Reddy-EXT, Eswar" \
+        && git add . \
+        && git commit -m "Minifying CSS, JS Files"; exit 0 \
+        && git push -u origin master
+
+# Expose the port inside container
+EXPOSE 80
+
+# Execute the httpd command to start the application
+ENTRYPOINT rm -rf /run/httpd/httpd.pid && /usr/sbin/httpd -D FOREGROUND

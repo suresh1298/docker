@@ -1,0 +1,25 @@
+FROM ubuntu:16.04
+MAINTAINER Reddy Eswar
+COPY ./apt.conf /etc/apt/apt.conf
+RUN apt-get update -y && apt install sudo wget apache2-dev apache2 -y \
+	&& pt installlibsqlite3-dev build-essential zlib1g-dev libncurses5-dev -y \
+	&& apt install libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev -y 
+COPY requirements.txt .
+COPY Python-3.7.3.tar.xz .
+RUN tar -xf Python-3.7.3.tar.xz && cd Python-3.7.3 \ 
+	&& ./configure --enable-optimizations \
+	&& sudo make altinstall
+RUN cd / && pip3.7 --proxy=http://cias.geoaws.com:8080/ install -r requirements.txt 
+RUN cd Python-3.7.3 && ./configure --enable-shared \
+	&& sudo make altinstall && ./configure --enable-optimizations \
+	&& sudo make altinstall && pip3.7 --proxy=http://cias.geoaws.com:8080/ install mod_wsgi \
+	&& ./configure --enable-loadable-sqlite-extensions 
+	&& make && sudo make install
+COPY hackathon /var/www/html/hackathon
+COPY hackathon.conf /etc/apache2/sites-enabled/hackathon.conf
+RUN a2enmod authnz_ldap &&  a2enmod headers \
+	&& rm -rf /var/www/html/index.html && rm -rf /etc/apache2/sites-enabled/000-default.conf \
+	&& chown -R www-data:www-data /var/www/html/hackathon/
+RUN apache2ctl -t
+EXPOSE 80
+ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]

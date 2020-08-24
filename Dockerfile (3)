@@ -1,0 +1,41 @@
+FROM centos
+MAINTAINER Reddy Eswar
+RUN echo "proxy=http://cias.geoaws.com:8080/" >> /etc/yum.conf \
+	&& yum update -y && yum install sudo -y && yum install wget -y && yum install -y httpd \
+        && yum install -y mod_wsgi && yum install -y mod_ldap && yum install -y MySQL-python \
+        && yum install -y git && yum install -y python-devel && yum install -y unixODBC-devel \
+        && yum install -y openldap-devel && yum install -y epel-release && yum install -y python-pip \
+        && yum groupinstall -y 'Development Tools' \
+	&& echo 'export http_proxy=http://cias.geoaws.com:8080/' >> ~/.bash_profile \
+        && echo 'export https_proxy=http://cias.geoaws.com:8080/' >> ~/.bash_profile \
+        && echo 'export http_proxy=http://cias.geoaws.com:8080/' >> ~/.bashrc \
+        && echo 'export https_proxy=http://cias.geoaws.com:8080/' >> ~/.bashrc \
+	&& export http_proxy=http://cias.geoaws.com:8080/ \
+        && export https_proxy=http://cias.geoaws.com:8080/
+RUN wget -e  http_proxy=http://cias.geoaws.com:8080/ http://public-yum.oracle.com/RPM-GPG-KEY-oracle-ol7 \
+        -O /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+COPY ol7.repo /etc/yum.repos.d/
+RUN yum install yum -y install oracle-release-el7 oraclelinux-developer-release-el7 \
+        &&  yum -y install python-cx_Oracle \
+        && sudo sh -c "echo /usr/lib/oracle/18.3/client64/lib > /etc/ld.so.conf.d/oracle-instantclient.conf" \
+        && sudo ldconfig
+COPY requirements.txt .
+RUN pip --proxy=http://cias.geoaws.com:8080/ install -r requirements.txt
+COPY ./disha.conf /etc/httpd/conf.d/disha.conf
+COPY ./status_portal_config.json /var/www/html/server_config/
+COPY id_rsa /root/.ssh/id_rsa
+COPY id_rsa.pub /root/.ssh/id_rsa.pub
+COPY known_hosts /root/.ssh/known_hosts
+RUN cd /var/www/html/ \
+        && git init \
+        && git clone git@github.conti.de:uidn8830/StatusPortal.git \
+        && cd StatusPortal \
+        && git checkout origin/develop \
+        && git checkout develop \
+        && chown -R apache:apache /var/www/html/StatusPortal \
+        && chown -R apache:apache /var/www/html/server_config
+ARG CLEAR_CACHE=1
+RUN cd /var/www/html/StatusPortal \
+	&& git pull
+EXPOSE 80
+ENTRYPOINT rm -rf /run/httpd/httpd.pid && /usr/sbin/httpd -D FOREGROUND

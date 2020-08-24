@@ -1,0 +1,43 @@
+# Base Image
+FROM ubuntu:16.04
+
+# Author
+MAINTAINER Reddy Eswar
+
+# Configuring Proxy for apt
+COPY apt.conf /etc/apt/apt.conf
+
+# Setup Proxy inside docker environment
+ENV http_proxy=http://cias.geoaws.com:8080/
+ENV https_proxy=http://cias.geoaws.com:8080/
+
+# Installing required packages, google chrome
+RUN apt update -y && apt install curl sudo vim wget apache2-dev apache2 libfontconfig libappindicator1 fonts-liberation libnss3 libgconf-2-4 libasound2 libxss1 xdg-utils -y \
+        && apt-get -f install \
+        && curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - \
+        && sudo apt-get install -y nodejs \
+	&& wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+        && sudo dpkg -i google-chrome*.deb \
+        && export CHROME_BIN=/usr/bin/google-chrome-stable
+
+# Copy the Code inside Docker
+COPY hwf /var/www/html/hwf
+
+# Copy the hwf configuration
+COPY hwf_test.conf /etc/apache2/sites-enabled/hwf_test.conf
+
+# Working Directory for Code Coverage
+WORKDIR /var/www/html/hwf
+RUN npm install \
+        && npm install -g @angular/cli \
+        && npm install karma-chrome-launcher \
+        && rm -rf /etc/apache2/sites-enabled/000-default.conf && rm -rf /var/www/html/index.html \
+    	&& chown -R www-data:www-data /var/www/html/hwf  && gpasswd -a root www-data \
+        && apache2ctl -t
+
+# Exposing port to outside docker network
+EXPOSE 9876
+EXPOSE 80
+
+# Cmd for Code coverage
+ENTRYPOINT ng test --code-coverage && rm -f /run/apache2/apache2.pid && /usr/sbin/apache2ctl -D FOREGROUND

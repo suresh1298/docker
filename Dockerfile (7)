@@ -1,0 +1,24 @@
+FROM ubuntu:16.04
+MAINTAINER Reddy Eswar
+COPY apt.conf /etc/apt/apt.conf
+COPY requirements.txt .
+COPY oracle-instantclient12.2-basic-12.2.0.1.0-1.x86_64.rpm .
+COPY oracle-instantclient12.2-devel-12.2.0.1.0-1.x86_64.rpm .
+COPY oracle-instantclient12.2-sqlplus-12.2.0.1.0-1.x86_64.rpm .
+RUN apt update -y && apt install python libssl-dev build-essential sudo wget \
+	vim python-dev libldap2-dev unixodbc-dev libsasl2-dev gcc apache2-dev apache2 alien libaio1 python-pip -y \
+	&& alien -i oracle-instantclient12.2-basic-12.2.0.1.0-1.x86_64.rpm \
+	&& alien -i oracle-instantclient12.2-devel-12.2.0.1.0-1.x86_64.rpm \
+	&& alien -i oracle-instantclient12.2-sqlplus-12.2.0.1.0-1.x86_64.rpm \
+        && echo /usr/lib/oracle/12.2/client64/lib > /etc/ld.so.conf.d/oracle.conf \
+	&& sudo ldconfig \
+	&& pip --proxy=http://cias3basic.conti.de:8080/ --no-cache-dir install -r requirements.txt
+COPY Server /var/www/html/Server
+COPY server.conf /etc/apache2/sites-enabled/server.conf
+RUN  rm -rf /etc/apache2/sites-enabled/000-default.conf \
+	&& rm -rf /var/www/html/index.html \
+	&& chown -R www-data:www-data /var/www/html/Server \
+	&& gpasswd -a root www-data && sudo a2enmod authnz_ldap \
+	&& sudo a2enmod headers && apache2ctl -t
+EXPOSE 80
+ENTRYPOINT rm -rf /run/apache2/apache2.pid && /usr/sbin/apache2ctl -D FOREGROUND

@@ -1,0 +1,18 @@
+{
+  "insecure-registries" : ["ec2-52-23-245-94.compute-1.amazonaws.com:8083"]
+}
+
+
+nexus repo with port 
+demin.repo for httpd fo insecure register 
+restart deamon and docker 
+docker tag privaterepo 
+docker push 
+prune
+save and load 
+export 
+
+
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+export JRE_HOME=/usr/lib/jvm/java-8-openjdk-amd64/jre
+export PATH=$PATH:/usr/lib/jvm/java-8-openjdk-amd64/bin/:/usr/lib/jvm/java-8-openjdk-amd64/jre/bin

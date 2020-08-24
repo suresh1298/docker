@@ -1,0 +1,110 @@
+FROM ubuntu:16.04
+
+MAINTAINER Reddy Eswar, Uday More
+
+# Confguring Proxy
+COPY ./apt.conf /etc/apt/apt.conf
+
+# Setup Proxy
+RUN export http_proxy=http://cias.geoaws.com:8080/ \
+	&& export https_proxy=http://cias.geoaws.com:8080/
+
+# settingup default shell
+RUN ln -sf bash /bin/sh
+
+# Installing requirements with apt
+RUN apt-get update -y \
+	 && apt install sysstat ifstat python python3 python-dev \
+	 python-pip unzip python3-dev python3-pip python3-pytest \
+	 cmake git sudo wget build-essential libgtk2.0-dev \
+	 libqt5x11extras5 libqt5x11extras5-dev -y \
+    && python3 -m pip --proxy=http://cias.geoaws.com:8080/ install -U pytest
+
+# freeglut3 freeglut3-dev python-pybind11 python3-pybind11 
+
+# Copying Depenedencies zip file from local
+#COPY ./ctzs_dependencies-master.zip /
+RUN wget http://github.conti.de/CTZS/ctzs_dependencies/archive/master.zip
+
+# Unzipping Dependencies file
+RUN unzip master.zip
+#RUN unzip ctzs_dependencies-master.zip
+# Cd into dependencies dir
+WORKDIR /ctzs_dependencies-master
+
+# Compiled it for Header based libraries & tinyxml2
+RUN cmake . && make && sudo make install && sudo ldconfig 
+
+# Install protobuff from Source
+RUN pushd libprotobuf3/build/gcc/ && tar -zxf protobuf-cpp-3.5.0.tar.gz \
+    && cd protobuf-3.5.0 && ./configure --prefix=/usr/local && make && sudo make install && sudo ldconfig && popd
+
+# Install fastcdr from source
+RUN pushd fastcdr/build/gcc && tar -zxf Fast-CDR-*.tar.gz && cd Fast-CDR-1.0.8 \ 
+    && mkdir -p build && cd build && cmake .. && make && sudo make install && sudo ldconfig && popd
+
+# Install fastrtps from source
+RUN pushd fastrtps/build/gcc && tar -zxf Fast-RTPS-*.tar.gz && cd Fast-RTPS-1.6.0 \
+    && sed -i 's/#include <memory>/#include <memory>\n#include <functional>/' include/fastrtps/rtps/writer/RTPSWriter.h \
+    && mkdir -p build && cd build && cmake .. && make && sudo make install && sudo ldconfig && popd
+
+# Install gtk2
+#RUN sudo apt-get -y install gtk-2.0
+
+# Install OpenGL
+#RUN sudo apt-get -y install freeglut3 freeglut3-dev
+
+# Install wxwidgets from source
+RUN pushd wxwidgets/build/gcc/ && tar -jxf wxWidgets-*.tar.bz2 && cd wxWidgets-3.1.1 && mkdir -p gtk-build && cd gtk-build \
+    && ../configure --with-opengl && make && sudo make install && sudo ldconfig && wx-config --version && popd
+
+# Install pybind11 from source
+RUN pushd pybind11 && mkdir -p build && cd build && cmake .. && make && sudo make install && sudo ldconfig && popd
+
+#Install gtest
+RUN pushd gtest/build/ && tar -zxf googletest-release-*.tar.gz && cd googletest-release-* && mkdir -p build \
+    && pushd build && cmake .. -DBUILD_GMOCK=ON -DBUILD_GTEST=ON && make -j 2 && sudo cp -a googlemock/*.a /usr/lib/ \
+    && sudo cp -a googlemock/gtest/*.a /usr/lib/ && popd && sudo cp -a googletest/include/gtest /usr/include \
+    && sudo cp -a googlemock/include/gmock /usr/include && popd
+
+
+# Install ecal from source
+RUN wget http://github.conti.de/CTZS/ecal/archive/v4.9.7.tar.gz
+
+RUN tar -xvzf v4.9.7.tar.gz && cd ecal-4.9.7 && mkdir build && cd build \ 
+    && cmake .. -DCMAKE_BUILD_TYPE=Release -DHAS_HDF5=OFF -DHAS_WXWIDGETS=OFF -DHAS_QT5=OFF -DBUILD_TIME=OFF -DBUILD_PY_BINDING=OFF -DBUILD_APPS=OFF -DBUILD_SAMPLES=OFF -DBUILD_TESTS=OFF && make \ 
+    && sudo make install && sudo ldconfig
+
+#Install QT (silent Installation)
+#RUN wget -4 -e use_proxy=yes -e http_proxy=http://cias.geoaws.com:8080/  http://qtmirror.ics.com/pub/qtproject/archive/qt/5.7/5.7.0/qt-opensource-linux-x64-5.7.0.run
+COPY qt-opensource-linux-x64-5.7.0.run .
+RUN chmod +x qt-opensource-linux-x64-5.7.0.run
+COPY qt-noninteractive.qs .
+RUN ./qt-opensource-linux-x64-5.7.0.run --verbose --script qt-noninteractive.qs -platform minimal
+
+# Clone the repository (Integration Branch)
+#RUN cd / && git init && git clone -b Integration http://75dda6a62e26c0e3ee4b1c375718a719ff42eba1:x-oauth-basic@github.conti.de/uidk6160/CANvAS.git
+COPY id_rsa /root/.ssh/id_rsa
+COPY id_rsa.pub /root/.ssh/id_rsa.pub
+COPY known_hosts /root/.ssh/known_hosts
+RUN chmod 0600 /root/.ssh/id_rsa \
+	&& chmod 0600 /root/.ssh/id_rsa.pub 
+RUN git init \
+        && git clone git@github.conti.de:uidk6160/CANvAS.git \
+		&& cd CANvAS \
+		&& git checkout origin/Linux_Build \
+		&& git checkout Linux_Build
+ENV http_proxy=http://cias.geoaws.com:8080/
+ENV https_proxy=http://cias.geoaws.com:8080/
+
+#Install opencv-3.2.0 	
+RUN cd / \
+	&& wget -4 -e use_proxy=yes -e https_proxy=http://cias.geoaws.com:8080/ https://github.com/opencv/opencv/archive/3.2.0.zip \
+	&& unzip 3.2.0.zip \
+	&& cd /opencv-3.2.0/ \
+	&& cmake . \
+	&& make -j 2 \
+	&& sudo make install
+
+# Settingup QT5.7.0 and Running qtcreator
+ENTRYPOINT /opt/qt/Tools/QtCreator/bin/qtcreator  -noload Welcome -noload QmlDesigner -noload QmlProfiler

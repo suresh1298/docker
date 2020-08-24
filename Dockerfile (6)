@@ -1,0 +1,35 @@
+FROM ubuntu:16.04
+MAINTAINER Reddy Eswar
+COPY apt.conf /etc/apt/apt.conf
+COPY requirements.txt .
+COPY oracle-instantclient12.2-basic-12.2.0.1.0-1.x86_64.rpm .
+COPY oracle-instantclient12.2-devel-12.2.0.1.0-1.x86_64.rpm  . 
+COPY oracle-instantclient12.2-sqlplus-12.2.0.1.0-1.x86_64.rpm .
+COPY ./get-pip.py .
+RUN apt update -y \
+	&& apt install python python-dev libaio1 build-essential -y \ 
+	 libsqlite3-dev sudo wget vim apache2-dev apache2 alien git -y \
+	&& alien -i oracle-instantclient12.2-basic-12.2.0.1.0-1.x86_64.rpm \
+	&& alien -i oracle-instantclient12.2-devel-12.2.0.1.0-1.x86_64.rpm \
+        && alien -i oracle-instantclient12.2-sqlplus-12.2.0.1.0-1.x86_64.rpm \
+        && echo /usr/lib/oracle/12.2/client64/lib > /etc/ld.so.conf.d/oracle.conf \
+        && sudo ldconfig \
+	&& cd /var/www/html/ && git init \
+        && git clone http://5d0fa1c811bf1d3f1e862282b2a008d7aaff17dc:x-oauth-basic@github.conti.de/ADAS/TDM-DS-DMS.git 
+ENV http_proxy=http://cias3basic.conti.de:8080/
+ENV https_proxy=http://cias3basic.conti.de:8080/
+RUN python /get-pip.py \
+	&& pip --proxy=http://cias3basic.conti.de:8080/ install -r /requirements.txt \
+	&& mkdir /var/www/html/mdm_logs/ && chown -R www-data:www-data /var/www/html/mdm_logs/ \
+        && rm -rf /etc/apache2/sites-enabled/000-default.conf && rm -rf /var/www/html/index.html \
+        && chown -R www-data:www-data /var/www/html/TDM-DS-DMS  && gpasswd -a root www-data && apache2ctl -t
+COPY mdm.conf /etc/apache2/sites-enabled/mdm.conf
+ARG CLEAR_CACHE=1
+ENV http_proxy=
+ENV https_proxy=
+RUN cd /var/www/html/TDM-DS-DMS \
+	&& git pull
+ENV http_proxy=http://cias3basic.conti.de:8080/
+ENV https_proxy=http://cias3basic.conti.de:8080/
+EXPOSE 80
+ENTRYPOINT rm -rf /run/apache2/apache2.pid && /usr/sbin/apache2ctl -D FOREGROUND
